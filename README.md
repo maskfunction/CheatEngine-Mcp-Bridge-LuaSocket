@@ -2,19 +2,19 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-*A fork of [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) that adds TCP remote connectivity — let AI agents drive Cheat Engine on a remote Windows server over the network.*
+*A TCP transport variant of [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) by miscusi-peek — all credit for the bridge architecture, MCP tools, and Lua handlers goes to the original author. This fork adds LuaSocket-based TCP so the AI client and Cheat Engine can run on separate machines.*
 
 [中文文档](README_CN.md) | [Русская документация](README_RU.md)
 
-## What's New vs. the Original
+## Why This Fork Exists
 
-The original bridge communicates over a Windows Named Pipe, which only works when the AI client and Cheat Engine are on the **same machine**. This fork replaces the transport with TCP, so you can:
+The original project is excellent and fully functional. The one limitation is that its Named Pipe transport requires both the AI client and Cheat Engine to be on the **same Windows machine**. This fork swaps in a TCP transport so you can:
 
 - Run the MCP Python server on any machine (local dev box, cloud VM, container)
-- Keep Cheat Engine running on a dedicated remote Windows server
-- Control game memory inspection/manipulation from anywhere on the network
+- Keep Cheat Engine on a dedicated remote Windows server
+- Control game memory from anywhere on the network
 
-Everything else is preserved: all ~180 MCP tools, the JSON-RPC wire protocol, the handler naming conventions, and the multi-threaded CE-safe architecture.
+Everything else is unchanged: all ~180 MCP tools, the JSON-RPC wire protocol, the handler naming conventions, and the thread-safe CE architecture are exactly as designed in the original.
 
 ## Architecture
 
@@ -29,10 +29,8 @@ AI client ──(MCP / JSON-RPC over stdio)──▶ mcp_cheatengine_remote.py
                                                  Target process memory
 ```
 
-Compared to the original:
-
-| Layer | Original | LuaSocket Edition |
-|-------|----------|----------------|
+| Layer | Original | This Fork |
+|-------|----------|-----------|
 | AI ↔ Python | stdio (same machine) | stdio (same machine) |
 | Python ↔ CE | `\\.\pipe\CE_MCP_Bridge_v99` (local only) | TCP socket (cross-machine) |
 | CE ↔ Target | CE Lua API | CE Lua API (unchanged) |
@@ -41,7 +39,7 @@ Compared to the original:
 
 ```
 cheatengine-mcp-bridge-luasocket/
-├── mcp_cheatengine_remote.py    # Python MCP server — connects to remote CE via TCP
+├── mcp_cheatengine_remote.py    # Python MCP server — connects to CE via TCP
 ├── ce_mcp_bridge_remote.lua     # Lua TCP bridge — load this in Cheat Engine
 ├── requirements.txt             # Python dependencies (mcp>=1.0.0)
 ├── luasocket-ce-deploy/         # One-click LuaSocket deployment for CE
@@ -76,7 +74,7 @@ This auto-detects your CE's Lua version, matches the correct pre-built DLL, and 
 
 ### Step 2: Load the Bridge in Cheat Engine
 
-On the remote Windows server, open Cheat Engine and:
+On the remote Windows server, open Cheat Engine:
 
 1. Attach to the target process (or let the AI agent do it later)
 2. `File` → `Execute Script` → select `ce_mcp_bridge_remote.lua` → `Execute`
@@ -98,7 +96,7 @@ Command-line options:
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--host` | `127.0.0.1` | Remote CE server IP or hostname |
+| `--host` | `127.0.0.1` | CE server IP or hostname |
 | `--port` | `9999` | TCP port (must match the Lua side) |
 
 ### Step 4: Configure Your AI Client
@@ -113,7 +111,7 @@ Point your MCP-compatible AI client (Claude Code, Codex, etc.) at `mcp_cheatengi
     "cheatengine": {
       "command": "python",
       "args": [
-        "C:\\path\\to\\MCP_Server_Remote\\mcp_cheatengine_remote.py",
+        "C:\\path\\to\\cheatengine-mcp-bridge\\mcp_cheatengine_remote.py",
         "--host", "192.168.1.100",
         "--port", "9999"
       ]
@@ -127,14 +125,14 @@ Point your MCP-compatible AI client (Claude Code, Codex, etc.) at `mcp_cheatengi
 ```toml
 [mcp_servers.cheatengine]
 command = "python"
-args = ['C:\path\to\MCP_Server_Remote\mcp_cheatengine_remote.py', '--host', '192.168.1.100', '--port', '9999']
+args = ['C:\\path\\to\\cheatengine-mcp-bridge\\mcp_cheatengine_remote.py', '--host', '192.168.1.100', '--port', '9999']
 ```
 
 Restart the AI client, then verify with the `ping` tool — it should return the bridge version.
 
 ## Available MCP Tools
 
-The bridge exposes ~180 tools grouped by category:
+The bridge exposes ~180 tools grouped by category (all inherited from the original project):
 
 | Category | Tools | Description |
 |----------|-------|-------------|
@@ -175,7 +173,7 @@ Run `deploy.py` (see Step 1). CE does not ship with LuaSocket.
 
 ### Intermittent disconnections
 
-The TCP worker thread uses a 60-second read timeout. If your AI client sends requests less frequently than every 60 seconds, the connection stays alive. If the connection drops, the Python client auto-reconnects on the next request.
+The TCP worker thread uses a 60-second read timeout. If the connection drops, the Python client auto-reconnects on the next request.
 
 ### Permission Denied when running deploy.py
 
@@ -183,14 +181,14 @@ The TCP worker thread uses a 60-second read timeout. If your AI client sends req
 
 ## Building LuaSocket from Source
 
-If your CE uses a Lua version not covered by the pre-built binaries (prebuilt folder), or you're on 32-bit CE:
+If your CE uses a Lua version not covered by the pre-built binaries, or you're on 32-bit CE:
 
-See `luasocket-ce-deploy/README.md` → Building from Source for detailed instructions. Requires Visual Studio with C++ workload and matching Lua source code.
+See `luasocket-ce-deploy/README.md` → Building from Source. Requires Visual Studio with C++ workload and matching Lua source code.
 
-## License
+## Credits & License
 
 MIT — see [LICENSE](LICENSE).
 
-Based on [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) v12.0.0 by miscusi-peek (MIT License).
+Original project: [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) v12.0.0 by miscusi-peek (MIT License). This fork is deeply indebted to that work — the bridge architecture, all 180 MCP tool handlers, and the thread-safe CE integration are entirely from the original.
 
 LuaSocket 3.1.0 is Copyright (C) 2004-2022 Diego Nehab, used under the MIT license.

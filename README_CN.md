@@ -1,20 +1,20 @@
-# Cheat Engine MCP Bridge (LuaSocket版本)
+# Cheat Engine MCP Bridge (LuaSocket)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-*基于 [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) 的 fork，新增 TCP 远程连接功能 —— 让 AI 智能体通过网络远程操控 Windows 服务器上的 Cheat Engine。*
+*[cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) 的 TCP 传输层变体，原作者为 miscusi-peek。桥接架构、所有 MCP 工具和 Lua 命令处理程序全部归功于原作者。本 fork 仅添加了基于 LuaSocket 的 TCP 传输层，使 AI 客户端和 Cheat Engine 可以在不同机器上运行。*
 
 [English Documentation](README.md) | [Русская документация](README_RU.md)
 
-## 与原版的区别
+## 为什么会有这个 Fork
 
-原版使用 Windows Named Pipe 进行通信，这要求 AI 客户端和 Cheat Engine 必须在**同一台机器**上。本 fork 将传输层替换为 TCP，使你可以：
+原项目非常出色且功能完备。唯一的局限是它的 Named Pipe 传输层要求 AI 客户端和 Cheat Engine 必须在**同一台 Windows 机器**上。本 fork 将传输层替换为 TCP，使你可以：
 
 - 在任意机器（本地开发机、云服务器、容器）上运行 MCP Python 服务
 - 在专用的远程 Windows 服务器上运行 Cheat Engine
-- 从网络的任何位置控制游戏内存的检查和操作
+- 从网络的任何位置控制游戏内存
 
-所有其他功能完整保留：约 180 个 MCP 工具、JSON-RPC 通信协议、命令命名规范以及多线程 CE 安全架构。
+除此之外一切保持不变：所有约 180 个 MCP 工具、JSON-RPC 通信协议、命令命名规范以及线程安全的 CE 架构，均完全沿用原项目的设计。
 
 ## 架构
 
@@ -29,10 +29,8 @@ AI 客户端 ──(MCP / JSON-RPC over stdio)──▶ mcp_cheatengine_remote.p
                                                  目标进程内存
 ```
 
-对比原版:
-
-| 层级 | 原版 | 远程版 |
-|------|------|--------|
+| 层级 | 原项目 | 本 Fork |
+|------|--------|---------|
 | AI ↔ Python | stdio (同一机器) | stdio (同一机器) |
 | Python ↔ CE | `\\.\pipe\CE_MCP_Bridge_v99` (仅本地) | TCP 套接字 (跨机器) |
 | CE ↔ 目标 | CE Lua API | CE Lua API (不变) |
@@ -41,7 +39,7 @@ AI 客户端 ──(MCP / JSON-RPC over stdio)──▶ mcp_cheatengine_remote.p
 
 ```
 cheatengine-mcp-bridge-luasocket/
-├── mcp_cheatengine_remote.py    # Python MCP 服务端 — 通过 TCP 连接远程 CE
+├── mcp_cheatengine_remote.py    # Python MCP 服务端 — 通过 TCP 连接 CE
 ├── ce_mcp_bridge_remote.lua     # Lua TCP 桥接 — 在 Cheat Engine 中加载
 ├── requirements.txt             # Python 依赖 (mcp>=1.0.0)
 ├── luasocket-ce-deploy/         # 一键部署 LuaSocket 到 CE
@@ -98,7 +96,7 @@ python mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--host` | `127.0.0.1` | 远程 CE 服务器的 IP 或主机名 |
+| `--host` | `127.0.0.1` | CE 服务器的 IP 或主机名 |
 | `--port` | `9999` | TCP 端口（需与 Lua 端一致） |
 
 ### 第四步：配置 AI 客户端
@@ -113,7 +111,7 @@ python mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
     "cheatengine": {
       "command": "python",
       "args": [
-        "C:\\path\\to\\MCP_Server_Remote\\mcp_cheatengine_remote.py",
+        "C:\\path\\to\\cheatengine-mcp-bridge\\mcp_cheatengine_remote.py",
         "--host", "192.168.1.100",
         "--port", "9999"
       ]
@@ -127,14 +125,14 @@ python mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
 ```toml
 [mcp_servers.cheatengine]
 command = "python"
-args = ['C:\path\to\MCP_Server_Remote\mcp_cheatengine_remote.py', '--host', '192.168.1.100', '--port', '9999']
+args = ['C:\\path\\to\\cheatengine-mcp-bridge\\mcp_cheatengine_remote.py', '--host', '192.168.1.100', '--port', '9999']
 ```
 
 重启 AI 客户端，使用 `ping` 工具验证连接 —— 应返回桥接版本号。
 
 ## 可用 MCP 工具
 
-桥接暴露约 180 个工具，按类别分组：
+桥接暴露约 180 个工具，按类别分组（全部继承自原项目）：
 
 | 类别 | 工具示例 | 说明 |
 |------|---------|------|
@@ -175,7 +173,7 @@ args = ['C:\path\to\MCP_Server_Remote\mcp_cheatengine_remote.py', '--host', '192
 
 ### 间歇性断连
 
-TCP 工作线程使用 60 秒读取超时。如果 AI 客户端的请求间隔超过 60 秒，连接会保持。如果连接断开，Python 客户端会在下一次请求时自动重连。
+TCP 工作线程使用 60 秒读取超时。如果连接断开，Python 客户端会在下一次请求时自动重连。
 
 ### 运行 deploy.py 提示权限被拒绝
 
@@ -183,14 +181,14 @@ TCP 工作线程使用 60 秒读取超时。如果 AI 客户端的请求间隔�
 
 ## 从源码编译 LuaSocket
 
-如果你的 CE 使用的 Lua 版本不在预编译支持范围内（prebuilt 文件夹），或者是 32 位 CE：
+如果你的 CE 使用的 Lua 版本不在预编译支持范围内，或者是 32 位 CE：
 
 详见 `luasocket-ce-deploy/README.md` → Building from Source。需要安装 Visual Studio（含 C++ 工作负载）和匹配的 Lua 源码。
 
-## 许可证
+## 致谢与许可证
 
 MIT — 详见 [LICENSE](LICENSE)。
 
-基于 [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) v12.0.0，原作者 miscusi-peek（MIT 许可证）。
+原项目：[cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) v12.0.0，作者 miscusi-peek（MIT 许可证）。本 fork 深深受惠于该项目——桥接架构、全部 180 个 MCP 工具处理程序以及线程安全的 CE 集成均完全来自原项目。
 
-LuaSocket 3.1.0 版权归 Diego Nehab (2004-2022) 所有，基于 MIT 许可证使用。
+LuaSocket 3.1.0 Copyright (C) 2004-2022 Diego Nehab，基于 MIT 许可证使用。
