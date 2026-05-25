@@ -1,0 +1,7 @@
+# Cheat Engine MCP Bridge (LuaSocket) - Python Dependencies
+# Install: pip install -r requirements.txt
+
+# MCP SDK (Model Context Protocol) - Required for AI agent communication
+mcp>=1.0.0
+
+# Note: pywin32 is NOT required for the LuaSocket version (uses standard socket instead of Named Pipe)
