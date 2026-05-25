@@ -184,4 +184,4 @@ Cheat Engine поставляется с переименованной Lua DLL 
 
 MIT — см. файл [LICENSE](LICENSE).
 
-Библиотека LuaSocket 3.1.0 — авторское право Diego Nehab (1999–2013), используется по лицензии MIT.
+Библиотека LuaSocket 3.1.0 — Copyright (C) 2004-2022 Diego Nehab, используется по лицензии MIT.

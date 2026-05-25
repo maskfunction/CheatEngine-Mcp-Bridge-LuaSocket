@@ -193,4 +193,4 @@ MIT — see [LICENSE](LICENSE).
 
 Based on [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) v12.0.0 by miscusi-peek (MIT License).
 
-LuaSocket 3.1.0 is copyright Diego Nehab (1999–2013), used under the MIT license.
+LuaSocket 3.1.0 is Copyright (C) 2004-2022 Diego Nehab, used under the MIT license.

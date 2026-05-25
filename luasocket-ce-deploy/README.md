@@ -184,4 +184,4 @@ Cheat Engine ships with a renamed Lua DLL (`lua53-64.dll` instead of `lua53.dll`
 
 MIT — see [LICENSE](LICENSE) file.
 
-LuaSocket 3.1.0 is copyright Diego Nehab (1999–2013), used under the MIT license.
+LuaSocket 3.1.0 is Copyright (C) 2004-2022 Diego Nehab, used under the MIT license.
