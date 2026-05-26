@@ -1,6 +1,8 @@
 # Cheat Engine MCP Bridge (LuaSocket)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-green.svg)](https://python.org)
+[![Version](https://img.shields.io/badge/version-12.0.0--LuaSocket-blue.svg)]()
 
 *[cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) 的 TCP 传输层变体，原作者为 miscusi-peek。桥接架构、所有 MCP 工具和 Lua 命令处理程序全部归功于原作者。本 fork 仅添加了基于 LuaSocket 的 TCP 传输层，使 AI 客户端和 Cheat Engine 可以在不同机器上运行。*
 

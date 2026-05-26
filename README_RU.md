@@ -1,6 +1,8 @@
 # Cheat Engine MCP Bridge (LuaSocket)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-green.svg)](https://python.org)
+[![Version](https://img.shields.io/badge/version-12.0.0--LuaSocket-blue.svg)]()
 
 *TCP-вариант проекта [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) от miscusi-peek. Архитектура моста, все MCP-инструменты и Lua-обработчики — полностью заслуга оригинального автора. Этот форк добавляет TCP-транспорт на основе LuaSocket, чтобы AI-клиент и Cheat Engine могли работать на разных машинах.*
 
