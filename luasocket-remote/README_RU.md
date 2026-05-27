@@ -40,19 +40,23 @@ AI клиент ──(MCP / JSON-RPC через stdio)──▶ mcp_cheatengine
 ## Структура проекта
 
 ```
-cheatengine-mcp-bridge-luasocket/
-├── mcp_cheatengine_remote.py    # Python MCP-сервер — подключается к CE по TCP
-├── ce_mcp_bridge_remote.lua     # Lua TCP-мост — загружается в Cheat Engine
-├── requirements.txt             # Зависимости Python (mcp>=1.0.0)
-├── luasocket-ce-deploy/         # Установка LuaSocket в CE в один клик
-│   ├── deploy.py                # Автоопределение CE, версии Lua, установка DLL
-│   ├── prebuilt/                # Готовые DLL LuaSocket (Lua 5.1/5.3/5.4, x64)
-│   ├── lua/                     # Чистые Lua-модули
-│   └── src/                     # Исходный код LuaSocket 3.1.0 (для самостоятельной сборки)
-├── README.md                    # Документация на английском
-├── README_CN.md                 # Документация на китайском
-├── README_RU.md                 # Этот файл
-└── LICENSE                      # MIT
+cheatengine-mcp-bridge/
+├── MCP_Server/                   # Оригинальный MCP-сервер (Named Pipe)
+├── AI_Context/                   # Оригинальная документация
+├── luasocket-remote/             # ЭТОТ ПРОЕКТ — LuaSocket TCP расширение
+│   ├── mcp_cheatengine_remote.py # Python MCP-сервер — подключается к CE по TCP
+│   ├── ce_mcp_bridge_remote.lua  # Lua TCP-мост — загружается в Cheat Engine
+│   ├── requirements.txt          # Зависимости Python (mcp>=1.0.0)
+│   ├── luasocket-ce-deploy/      # Установка LuaSocket в CE в один клик
+│   │   ├── deploy.py             # Автоопределение CE, версии Lua, установка DLL
+│   │   ├── prebuilt/             # Готовые DLL LuaSocket (Lua 5.1/5.3/5.4, x64)
+│   │   ├── lua/                  # Чистые Lua-модули
+│   │   └── src/                  # Исходный код LuaSocket 3.1.0
+│   ├── README.md                 # Документация на английском
+│   ├── README_CN.md              # Документация на китайском
+│   └── README_RU.md              # Этот файл
+├── README.md                     # Оригинальный README
+└── LICENSE                       # MIT
 ```
 
 ## Быстрый старт
@@ -68,7 +72,7 @@ cheatengine-mcp-bridge-luasocket/
 В составе Cheat Engine **нет** библиотеки `socket`. Она необходима для TCP-моста. На удалённом Windows-сервере:
 
 ```powershell
-cd luasocket-ce-deploy
+cd luasocket-remote/luasocket-ce-deploy
 python deploy.py --ce "C:\Program Files\Cheat Engine 7.5"
 ```
 
@@ -79,7 +83,7 @@ python deploy.py --ce "C:\Program Files\Cheat Engine 7.5"
 На удалённом Windows-сервере откройте Cheat Engine:
 
 1. Присоединитесь к целевому процессу (или пусть это сделает AI-агент позже)
-2. `File` → `Execute Script` → выберите `ce_mcp_bridge_remote.lua` → `Execute`
+2. `File` → `Execute Script` → выберите `luasocket-remote/ce_mcp_bridge_remote.lua` → `Execute`
 
 Вы должны увидеть: `[MCP v12.0.0] TCP Server listening on 0.0.0.0:9999`
 
@@ -88,10 +92,10 @@ python deploy.py --ce "C:\Program Files\Cheat Engine 7.5"
 На локальной машине:
 
 ```bash
-pip install -r requirements.txt
+pip install -r luasocket-remote/requirements.txt
 
 # Подключение к удалённому серверу CE
-python mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
+python luasocket-remote/mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
 ```
 
 Аргументы командной строки:
@@ -103,7 +107,7 @@ python mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
 
 ### Шаг 4: Настройка AI-клиента
 
-Направьте ваш MCP-совместимый AI-клиент (Claude Code, Codex и др.) на `mcp_cheatengine_remote.py`.
+Направьте ваш MCP-совместимый AI-клиент (Claude Code, Codex и др.) на `luasocket-remote/mcp_cheatengine_remote.py`.
 
 **Claude Code / Claude Desktop** — добавьте в `.mcp.json`:
 
@@ -185,7 +189,7 @@ TCP-поток использует 60-секундный таймаут чте�
 
 Если ваш CE использует версию Lua, отсутствующую среди готовых сборок, или у вас 32-разрядный CE:
 
-См. `luasocket-ce-deploy/README.md` → Building from Source. Требуется Visual Studio с рабочей нагрузкой C++ и исходный код Lua соответствующей версии.
+См. `luasocket-remote/luasocket-ce-deploy/README.md` → Building from Source. Требуется Visual Studio с рабочей нагрузкой C++ и исходный код Lua соответствующей версии.
 
 ## Благодарности и лицензия
 

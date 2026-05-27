@@ -40,19 +40,23 @@ AI 客户端 ──(MCP / JSON-RPC over stdio)──▶ mcp_cheatengine_remote.p
 ## 项目结构
 
 ```
-cheatengine-mcp-bridge-luasocket/
-├── mcp_cheatengine_remote.py    # Python MCP 服务端 — 通过 TCP 连接 CE
-├── ce_mcp_bridge_remote.lua     # Lua TCP 桥接 — 在 Cheat Engine 中加载
-├── requirements.txt             # Python 依赖 (mcp>=1.0.0)
-├── luasocket-ce-deploy/         # 一键部署 LuaSocket 到 CE
-│   ├── deploy.py                # 自动检测 CE、匹配 Lua 版本、安装 DLL
-│   ├── prebuilt/                # 预编译 LuaSocket DLL (Lua 5.1/5.3/5.4, x64)
-│   ├── lua/                     # 纯 Lua 模块
-│   └── src/                     # LuaSocket 3.1.0 C 源码 (备选编译)
-├── README.md                    # 英文文档
-├── README_CN.md                 # 本文件
-├── README_RU.md                 # 俄文文档
-└── LICENSE                      # MIT
+cheatengine-mcp-bridge/
+├── MCP_Server/                   # 原项目 MCP 服务端 (Named Pipe)
+├── AI_Context/                   # 原项目文档
+├── luasocket-remote/             # 本项目 — LuaSocket TCP 扩展
+│   ├── mcp_cheatengine_remote.py # Python MCP 服务端 — 通过 TCP 连接 CE
+│   ├── ce_mcp_bridge_remote.lua  # Lua TCP 桥接 — 在 Cheat Engine 中加载
+│   ├── requirements.txt          # Python 依赖 (mcp>=1.0.0)
+│   ├── luasocket-ce-deploy/      # 一键部署 LuaSocket 到 CE
+│   │   ├── deploy.py             # 自动检测 CE、匹配 Lua 版本、安装 DLL
+│   │   ├── prebuilt/             # 预编译 LuaSocket DLL (Lua 5.1/5.3/5.4, x64)
+│   │   ├── lua/                  # 纯 Lua 模块
+│   │   └── src/                  # LuaSocket 3.1.0 C 源码 (备选编译)
+│   ├── README.md                 # 英文文档
+│   ├── README_CN.md              # 本文件
+│   └── README_RU.md              # 俄文文档
+├── README.md                     # 原项目 README
+└── LICENSE                       # MIT
 ```
 
 ## 快速开始
@@ -68,7 +72,7 @@ cheatengine-mcp-bridge-luasocket/
 Cheat Engine **不自带** `socket` 库，而 TCP 桥接需要它。在远程 Windows 服务器上执行：
 
 ```powershell
-cd luasocket-ce-deploy
+cd luasocket-remote/luasocket-ce-deploy
 python deploy.py --ce "C:\Program Files\Cheat Engine 7.5"
 ```
 
@@ -79,7 +83,7 @@ python deploy.py --ce "C:\Program Files\Cheat Engine 7.5"
 在远程 Windows 服务器上打开 Cheat Engine：
 
 1. 附加到目标进程（也可以稍后由 AI 智能体完成）
-2. `File` → `Execute Script` → 选择 `ce_mcp_bridge_remote.lua` → `Execute`
+2. `File` → `Execute Script` → 选择 `luasocket-remote/ce_mcp_bridge_remote.lua` → `Execute`
 
 你应该看到：`[MCP v12.0.0] TCP Server listening on 0.0.0.0:9999`
 
@@ -88,10 +92,10 @@ python deploy.py --ce "C:\Program Files\Cheat Engine 7.5"
 在你的本地机器上：
 
 ```bash
-pip install -r requirements.txt
+pip install -r luasocket-remote/requirements.txt
 
 # 连接到远程服务器上的 CE
-python mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
+python luasocket-remote/mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
 ```
 
 命令行参数：
@@ -103,7 +107,7 @@ python mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
 
 ### 第四步：配置 AI 客户端
 
-将支持 MCP 的 AI 客户端（Claude Code、Codex 等）指向 `mcp_cheatengine_remote.py`。
+将支持 MCP 的 AI 客户端（Claude Code、Codex 等）指向 `luasocket-remote/mcp_cheatengine_remote.py`。
 
 **Claude Code / Claude Desktop** — 添加到 `.mcp.json`：
 
@@ -185,7 +189,7 @@ TCP 工作线程使用 60 秒读取超时。如果连接断开，Python 客户�
 
 如果你的 CE 使用的 Lua 版本不在预编译支持范围内，或者是 32 位 CE：
 
-详见 `luasocket-ce-deploy/README.md` → Building from Source。需要安装 Visual Studio（含 C++ 工作负载）和匹配的 Lua 源码。
+详见 `luasocket-remote/luasocket-ce-deploy/README.md` → Building from Source。需要安装 Visual Studio（含 C++ 工作负载）和匹配的 Lua 源码。
 
 ## 致谢与许可证
 

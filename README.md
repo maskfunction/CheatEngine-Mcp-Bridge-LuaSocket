@@ -1,196 +1,384 @@
-# Cheat Engine MCP Bridge (LuaSocket)
+[Demo](https://github.com/user-attachments/assets/a184a006-f569-4b55-858a-ed80a7139035)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%2B-green.svg)](https://python.org)
-[![Version](https://img.shields.io/badge/version-12.0.0--LuaSocket-blue.svg)]()
+# Cheat Engine MCP Bridge
 
-*A TCP transport variant of [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) by miscusi-peek — all credit for the bridge architecture, MCP tools, and Lua handlers goes to the original author. This fork adds LuaSocket-based TCP so the AI client and Cheat Engine can run on separate machines.*
+**Let multibillion $ AI datacenters analyze the program memory for you.**
 
-[中文文档](README_CN.md) | [Русская документация](README_RU.md)
+Create mods, trainers, security audits, game bots, accelerate RE, or do anything else with any program and game in a fraction of a time.
 
-## Why This Fork Exists
+[![Version](https://img.shields.io/badge/version-12.0.0-blue.svg)](#) [![Python](https://img.shields.io/badge/python-3.10%2B-green.svg)](https://python.org)
 
-The original project is excellent and fully functional. The one limitation is that its Named Pipe transport requires both the AI client and Cheat Engine to be on the **same Windows machine**. This fork swaps in a TCP transport so you can:
+> [!NOTE]
+> Thanks everyone for the stars, much appreciated! <3
+> 
+> Specially a big thank you to all the contributors!!
+> 
+> [@libangli218](https://github.com/libangli218), [@lauralex](https://github.com/lauralex), [@iamtyroon](https://github.com/iamtyroon), [@HachiroSan](https://github.com/HachiroSan)
 
-- Run the MCP Python server on any machine (local dev box, cloud VM, container)
-- Keep Cheat Engine on a dedicated remote Windows server
-- Control game memory from anywhere on the network
+---
 
-Everything else is unchanged: all ~180 MCP tools, the JSON-RPC wire protocol, the handler naming conventions, and the thread-safe CE architecture are exactly as designed in the original.
+## The Problem
 
-## Architecture
+You're staring at gigabytes of memory. Millions of addresses. Thousands of functions. Finding *that one pointer*, *that one structure* takes **days or weeks** of manual work.
 
+**What if you could just ask?**
+
+> *"Find the packet decryptor hook."*  
+> *"Find the OPcode of character coordinates."*  
+> *"Find the OPcode of health values."*  
+> *"Find the unique AOB pattern to make my trainer reliable after game updates."*
+
+**That's exactly what this does.**
+
+_- Stop clicking through hex dumps and start having conversations with the memory._
+
+---
+
+## What You Get:
+
+| Before (Manual) | After (AI Agent + MCP) |
+|-----------------|---------------------|
+| Day 1: Find packet address | Minute 1: "Find RX packet decryption hook" |
+| Day 2: Trace what writes to it | Minute 3: "Generate unique AOB signature to make it update persistent" |
+| Day 3: Find RX hook | Minute 6: "Find movement OPcodes" |
+| Day 4: Document structure | Minute 10: "Create python interpreter of hex to plain text" |
+| Day 5: Game updates, start over | **Done.** |
+
+**Your AI can now:**
+- Read any memory instantly (integers, floats, strings, pointers)
+- Follow pointer chains: `[[base+0x10]+0x20]+0x8` → resolved in ms
+- Auto-analyze structures with field types and values
+- Identify C++ objects via RTTI: *"This is a CPlayer object"*
+- Disassemble and analyze functions
+- Debug invisibly with hardware breakpoints + Ring -1 hypervisor
+- And much more!
+
+---
+
+## How It Works
+```mermaid
+flowchart TD
+    AI[AI Agent: Claude/Cursor/Copilot]
+    
+    AI -->|MCP Protocol - JSON-RPC over stdio| MCP
+    
+    MCP[mcp_cheatengine.py - Python MCP Server]
+    
+    MCP <-->|Named Pipe - Async| PIPE
+    
+    PIPE["\\.\\pipe\\CE_MCP_Bridge_v99"]
+    
+    PIPE <--> CE
+    
+    subgraph CE[Cheat Engine - DBVM Mode]
+        subgraph LUA[ce_mcp_bridge.lua]
+            WORKER[Worker Thread - Blocking I/O]
+            MAIN[Main Thread - GUI + CE API]
+            WORKER <-->|Sync| MAIN
+        end
+    end
+    
+    MAIN -->|Memory Access| TARGET[Target .exe]
 ```
-AI client ──(MCP / JSON-RPC over stdio)──▶ mcp_cheatengine_remote.py
-                                                       │
-                                                       ▼ (TCP, length-prefixed JSON-RPC)
-                                              ce_mcp_bridge_remote.lua
-                                                  (inside Cheat Engine)
-                                                       │
-                                                       ▼ (CE Lua API / DBVM)
-                                                 Target process memory
+---
+
+## Installation
+
+```bash
+pip install -r MCP_Server/requirements.txt
+```
+Or manually:
+```bash
+pip install mcp pywin32
 ```
 
-| Layer | Original | This Fork |
-|-------|----------|-----------|
-| AI ↔ Python | stdio (same machine) | stdio (same machine) |
-| Python ↔ CE | `\\.\pipe\CE_MCP_Bridge_v99` (local only) | TCP socket (cross-machine) |
-| CE ↔ Target | CE Lua API | CE Lua API (unchanged) |
+> [!NOTE]
+> Native pipe mode is **Windows only** because it uses Named Pipes (`pywin32`). Use TCP relay transport when the MCP server runs outside the Windows environment that hosts Cheat Engine and cannot open the named pipe directly.
 
-## Project Structure
-
-```
-cheatengine-mcp-bridge-luasocket/
-├── mcp_cheatengine_remote.py    # Python MCP server — connects to CE via TCP
-├── ce_mcp_bridge_remote.lua     # Lua TCP bridge — load this in Cheat Engine
-├── requirements.txt             # Python dependencies (mcp>=1.0.0)
-├── luasocket-ce-deploy/         # One-click LuaSocket deployment for CE
-│   ├── deploy.py                # Auto-detect CE, match Lua version, install DLLs
-│   ├── prebuilt/                # Pre-compiled LuaSocket DLLs (Lua 5.1/5.3/5.4, x64)
-│   ├── lua/                     # Pure-Lua socket modules
-│   └── src/                     # LuaSocket 3.1.0 C source (fallback compilation)
-├── README.md                    # This file
-├── README_CN.md                 # Chinese documentation
-├── README_RU.md                 # Russian documentation
-└── LICENSE                      # MIT
-```
+---
 
 ## Quick Start
 
-### Prerequisites
+### 1. Load Bridge in Cheat Engine
+1. Enable DBVM in Cheat Engine if you plan to use DBVM tools.
+2. Open Cheat Engine's Lua Engine or script executor.
+   - Preferred: `File` -> `Execute Script` -> open `MCP_Server/ce_mcp_bridge.lua` -> `Execute`.
+   - If your Cheat Engine build does not show `File` -> `Execute Script`, use `Table` -> `Show Cheat Table Lua Script`, paste the `dofile(...)` line below, and execute it:
 
-- **Remote Windows server** with [Cheat Engine 7.x](https://www.cheatengine.org/) installed
-- **Local machine** with Python 3.10+ (any OS, but Windows is simplest)
-- Network connectivity between the two machines
+```lua
+dofile([[C:\path\to\cheatengine-mcp-bridge\MCP_Server\ce_mcp_bridge.lua]])
+```
 
-### Step 1: Deploy LuaSocket to Cheat Engine
+Look for: `[MCP v12.0.0] MCP Server Listening on: CE_MCP_Bridge_v99`
 
-Cheat Engine does **not** include the `socket` library. The TCP bridge needs it. On the remote Windows server:
+### 2. Configure MCP Client
+Add to your MCP configuration (e.g., `mcp_config.json`):
+```json
+{
+  "servers": {
+    "cheatengine": {
+      "command": "python",
+      "args": ["C:/path/to/MCP_Server/mcp_cheatengine.py"]
+    }
+  }
+}
+```
+Restart the IDE to load the MCP server config.
+
+For Codex, add a TOML server block to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.cheatengine]
+command = "python"
+args = ['C:\path\to\cheatengine-mcp-bridge\MCP_Server\mcp_cheatengine.py']
+```
+
+Use single quotes for the Windows path so TOML treats backslashes literally.
+
+#### TCP relay transport
+
+The TCP relay lets `mcp_cheatengine.py` talk to Cheat Engine through a TCP socket instead of opening the Windows named pipe itself. Cheat Engine and the Lua bridge still run on Windows, while the MCP server can run anywhere that can reach the relay: another Windows process, a VM, a container, a Linux host, or a remote machine. This can also be used with WSL without changing the Lua bridge.
+
+1. On Windows, load `MCP_Server/ce_mcp_bridge.lua` in Cheat Engine as usual.
+2. On Windows, start the relay:
 
 ```powershell
-cd luasocket-ce-deploy
-python deploy.py --ce "C:\Program Files\Cheat Engine 7.5"
+python C:\path\to\cheatengine-mcp-bridge\MCP_Server\ce_tcp_relay.py --host 127.0.0.1 --port 9876
 ```
 
-This auto-detects your CE's Lua version, matches the correct pre-built DLL, and copies all files to the right locations. Use `--dry-run` to preview first.
-
-### Step 2: Load the Bridge in Cheat Engine
-
-On the remote Windows server, open Cheat Engine:
-
-1. Attach to the target process (or let the AI agent do it later)
-2. `File` → `Execute Script` → select `ce_mcp_bridge_remote.lua` → `Execute`
-
-You should see: `[MCP v12.0.0] TCP Server listening on 0.0.0.0:9999`
-
-### Step 3: Start the Python MCP Server
-
-On your local machine:
+3. In the environment where the MCP server will run, install the MCP dependency without `pywin32`, then run/configure the MCP server with TCP transport:
 
 ```bash
-pip install -r requirements.txt
-
-# Connect to CE on the remote server
-python mcp_cheatengine_remote.py --host 192.168.1.100 --port 9999
+python3 -m pip install -r MCP_Server/requirements-tcp.txt
 ```
 
-Command-line options:
+```bash
+CE_MCP_TRANSPORT=tcp \
+CE_MCP_HOST=127.0.0.1 \
+CE_MCP_PORT=9876 \
+python3 /path/to/cheatengine-mcp-bridge/MCP_Server/mcp_cheatengine.py
+```
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--host` | `127.0.0.1` | CE server IP or hostname |
-| `--port` | `9999` | TCP port (must match the Lua side) |
-
-### Step 4: Configure Your AI Client
-
-Point your MCP-compatible AI client (Claude Code, Codex, etc.) at `mcp_cheatengine_remote.py`.
-
-**Claude Code / Claude Desktop** — add to `.mcp.json`:
+For MCP client configs that support environment variables:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "cheatengine": {
-      "command": "python",
-      "args": [
-        "C:\\path\\to\\cheatengine-mcp-bridge\\mcp_cheatengine_remote.py",
-        "--host", "192.168.1.100",
-        "--port", "9999"
-      ]
+      "command": "python3",
+      "args": ["/path/to/cheatengine-mcp-bridge/MCP_Server/mcp_cheatengine.py"],
+      "env": {
+        "CE_MCP_TRANSPORT": "tcp",
+        "CE_MCP_HOST": "127.0.0.1",
+        "CE_MCP_PORT": "9876"
+      }
     }
   }
 }
 ```
 
-**Codex (OpenAI)** — add to `.codex.toml`:
+Set `--host` on the relay and `CE_MCP_HOST` on the MCP server to addresses that match your network setup. Keep the relay bound to trusted interfaces only, because anyone who can reach it can control the Cheat Engine bridge.
 
-```toml
-[mcp_servers.cheatengine]
-command = "python"
-args = ['C:\\path\\to\\cheatengine-mcp-bridge\\mcp_cheatengine_remote.py', '--host', '192.168.1.100', '--port', '9999']
+### 3. Verify Connection
+Use the `ping` tool to verify connectivity:
+```json
+{"success": true, "version": "12.0.0", "message": "CE MCP Bridge Active"}
 ```
 
-Restart the AI client, then verify with the `ping` tool — it should return the bridge version.
+### 4. Start Asking Questions
+```
+"What process is attached?"
+"Read 16 bytes at the base address"
+"Disassemble the entry point"
+```
 
-## Available MCP Tools
+---
 
-The bridge exposes ~180 tools grouped by category (all inherited from the original project):
+## ~180 MCP Tools Available
 
-| Category | Tools | Description |
-|----------|-------|-------------|
-| Process | `attach_process`, `detach_process`, `get_process_info`, `get_pid`, `get_arch` | Manage target process |
-| Memory | `read_memory`, `write_memory`, `read_pointer`, `read_string`, `find_bytes` | Memory read/write/scan |
-| Modules | `enum_modules`, `get_module_info`, `find_symbol` | Module enumeration |
-| Breakpoints | `set_breakpoint`, `remove_breakpoint`, `list_breakpoints`, `get_breakpoint_hits` | Hardware breakpoints |
-| DBVM | `start_dbvm_watch`, `stop_dbvm_watch`, `list_dbvm_watches`, `get_dbvm_stats` | Hypervisor-level tracing |
-| Assembly | `assemble`, `disassemble`, `get_instruction_info` | x86/x64 assembly |
-| Registers | `get_registers`, `set_register`, `get_stack` | Register and stack inspection |
-| Code Injection | `allocate_memory`, `inject_dll`, `create_thread`, `call_function` | Remote code execution |
-| GUI | `get_control_list`, `click_control`, `send_key`, `get_foreground_window` | CE GUI automation |
-| Cheat Table | `load_cheat_table`, `activate_entry`, `get_entry_list` | Cheat table management |
-| Shell | `run_command`, `shell_execute` | Command execution (disabled by default) |
+### Memory
+| Tool | Description |
+|------|-------------|
+| `read_memory`, `read_integer`, `read_string` | Read any data type |
+| `read_pointer_chain` | Follow `[[base+0x10]+0x20]` paths |
+| `scan_all`, `aob_scan` | Find values and byte patterns |
 
-For the full API reference, see the original project's `AI_Context/MCP_Bridge_Command_Reference.md`.
+### Analysis
+| Tool | Description |
+|------|-------------|
+| `disassemble`, `analyze_function` | Code analysis |
+| `dissect_structure` | Auto-detect fields and types |
+| `get_rtti_classname` | Identify C++ object types |
+| `find_references`, `find_call_references` | Cross-references |
 
-## Security Considerations
+### Debugging
+| Tool | Description |
+|------|-------------|
+| `set_breakpoint`, `set_data_breakpoint` | Hardware breakpoints |
+| `start_dbvm_watch` | Ring -1 invisible tracing |
 
-- The TCP bridge binds to `0.0.0.0` by default — consider restricting with Windows Firewall to your specific IP
-- There is no authentication or encryption on the TCP channel. Run it on a trusted network or VPN
-- Shell execution tools (`run_command`, `shell_execute`) are disabled by default; enable with `CE_MCP_ALLOW_SHELL=1`
-- Prefer hardware breakpoints (DR0–DR3) and DBVM watches over software (`0xCC`) breakpoints for anti-cheat safety
-- CE Settings → Extra → disable "Query memory region routines" to prevent BSODs during DBVM scans
+### Process Lifecycle
+| Tool | Description |
+|------|-------------|
+| `open_process`, `get_process_list` | Attach to or enumerate running processes |
+| `create_process` | Launch a new process under CE's control |
+| `pause_process`, `unpause_process` | Suspend / resume target execution |
+
+### Memory Allocation
+| Tool | Description |
+|------|-------------|
+| `allocate_memory`, `free_memory` | Reserve and release memory in the target |
+| `set_memory_protection`, `full_access` | Adjust page protection flags |
+
+### Code Injection
+| Tool | Description |
+|------|-------------|
+| `inject_dll` | Load a DLL into the target process |
+| `execute_code`, `execute_method` | Run shellcode or CE Lua methods remotely |
+
+### Symbol Management
+| Tool | Description |
+|------|-------------|
+| `register_symbol`, `get_symbol_info` | Create and query named symbols |
+| `enable_windows_symbols` | Enable PDB symbol resolution |
+
+### Assembly / Compilation
+| Tool | Description |
+|------|-------------|
+| `assemble_instruction` | Assemble a single x86/x64 instruction to bytes |
+| `compile_c_code` | Compile C source into injected shellcode |
+| `generate_api_hook_script` | Generate a CE auto-assembler API hook template |
+
+### Window / GUI Automation
+| Tool | Description |
+|------|-------------|
+| `find_window` | Locate a window by title or class |
+| `send_window_message` | Post `WM_*` messages to a target window |
+
+### Input Automation
+| Tool | Description |
+|------|-------------|
+| `get_pixel` | Sample a pixel color at screen coordinates |
+| `is_key_pressed`, `do_key_press` | Query and simulate keyboard input |
+
+### Cheat Table
+| Tool | Description |
+|------|-------------|
+| `load_table`, `save_table` | Load / save `.CT` cheat table files |
+| `get_address_list` | Enumerate entries in the active cheat table |
+
+### Kernel Mode (DBK / DBVM)
+| Tool | Description |
+|------|-------------|
+| `dbk_get_cr3` | Read the CR3 register for the target process |
+| `read_process_memory_cr3` | Read physical memory via CR3 bypass |
+
+And many more at `AI_Context/MCP_Bridge_Command_Reference.md`
+
+---
+
+## Critical Configuration
+
+### BSOD Prevention
+> [!CAUTION]
+> **You MUST disable:** Cheat Engine → Settings → Extra → **"Query memory region routines"**
+> 
+> Enabled: Causes `CLOCK_WATCHDOG_TIMEOUT` BSODs due to conflicts with DBVM/Anti-Cheat when scanning protected pages.
+
+---
 
 ## Troubleshooting
 
-### "LuaSocket is not installed"
+### Cheat Engine says "too many local variables"
 
-Run `deploy.py` (see Step 1). CE does not ship with LuaSocket.
+Load the bridge from disk with `dofile(...)` instead of pasting the full script into a cheat table script. The bridge also declares command handlers as global functions intentionally; this avoids Cheat Engine's Lua chunk limit of 200 local variables when the complete bridge is compiled at once.
 
-### "Connection refused" or timeout
+### MCP client cannot connect
 
-- Verify the Lua script is loaded in CE and shows `TCP Server listening on 0.0.0.0:9999`
-- Check Windows Firewall allows inbound TCP on port 9999
-- Use `nmap -p 9999 <remote-ip>` to verify port is open
-- If nmap shows `closed`, the Lua script may have bound IPv6-only — `ce_mcp_bridge_remote.lua` uses `tcp4()` to prevent this
+Check these in order:
 
-### Intermittent disconnections
+1. Cheat Engine is open and shows `MCP Server Listening on: CE_MCP_Bridge_v99`.
+2. The MCP client was restarted after adding the server config.
+3. The configured `mcp_cheatengine.py` path exists.
+4. `pip install -r MCP_Server/requirements.txt` has installed both `mcp` and `pywin32`.
+5. Run the MCP `ping` tool. A successful connection returns `success: true` and the bridge version. `process_id: 0` is normal until Cheat Engine is attached to a target process.
 
-The TCP worker thread uses a 60-second read timeout. If the connection drops, the Python client auto-reconnects on the next request.
+---
 
-### Permission Denied when running deploy.py
+## Environment Variables
 
-`C:\Program Files\` is UAC-protected. Right-click PowerShell → Run as Administrator.
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CE_MCP_TIMEOUT` | `30` | Timeout (seconds) for each MCP tool call. |
+| `CE_MCP_ALLOW_SHELL` | *unset* | Set to `1` to enable `run_command` / `shell_execute` tools. **Arbitrary code execution risk** — leave unset by default. |
 
-## Building LuaSocket from Source
+---
 
-If your CE uses a Lua version not covered by the pre-built binaries, or you're on 32-bit CE:
+## Example Workflows
 
-See `luasocket-ce-deploy/README.md` → Building from Source. Requires Visual Studio with C++ workload and matching Lua source code.
+**Finding a value:**
+```
+You: "Scan for gold: 15000"  →  AI finds 47 results
+You: "Gold changed to 15100"  →  AI filters to 3 addresses
+You: "What writes to the first one?"  →  AI sets hardware BP
+You: "Disassemble that function"  →  Full AddGold logic revealed
+```
 
-## Credits & License
+**Understanding a structure:**
+```
+You: "What's at [[game.exe+0x1234]+0x10]?"
+AI: "RTTI: CPlayerInventory"
+AI: "0x00=vtable, 0x08=itemCount(int), 0x10=itemArray(ptr)..."
+```
 
-MIT — see [LICENSE](LICENSE).
+---
 
-Original project: [cheatengine-mcp-bridge](https://github.com/miscusi-peek/cheatengine-mcp-bridge) v12.0.0 by miscusi-peek (MIT License). This fork is deeply indebted to that work — the bridge architecture, all 180 MCP tool handlers, and the thread-safe CE integration are entirely from the original.
+## Project Structure
 
-LuaSocket 3.1.0 is Copyright (C) 2004-2022 Diego Nehab, used under the MIT license.
+```
+CLAUDE.md                               # Claude Code agent guidance (this repo)
+README.md                               # User-facing documentation
+
+MCP_Server/
+├── mcp_cheatengine.py                  # Python MCP Server (FastMCP)
+├── ce_mcp_bridge.lua                   # Cheat Engine Lua Bridge
+└── test_mcp.py                         # Test Suite
+
+AI_Context/
+├── BATCH_WORKER_BRIEFING.md            # Parallel-worker task specifications (v12 overhaul)
+├── MCP_Bridge_Command_Reference.md     # MCP Commands reference
+├── CE_LUA_Documentation.md             # Full CheatEngine 7.6 official documentation
+└── AI_Guide_MCP_Server_Implementation.md  # Full technical documentation for AI agent
+```
+
+---
+
+## Testing
+
+Running the test:
+```bash
+python MCP_Server/test_mcp.py
+```
+
+Expected output:
+```
+✅ Memory Reading: 6/6 tests passed
+✅ Process Info: 4/4 tests passed  
+✅ Code Analysis: 8/8 tests passed
+✅ Breakpoints: 4/4 tests passed
+✅ DBVM Functions: 3/3 tests passed
+✅ Utility Commands: 11/11 tests passed
+⏭️ Skipped: 1 test (generate_signature)
+────────────────────────────────────
+Total: 36/37 PASSED (100% success)
+```
+
+---
+
+## The Bottom Line
+
+You no longer need to be an expert. Just ask the right questions.
+
+⚠️ EDUCATIONAL DISCLAIMER
+
+This code is for educational and research purposes only. It's created to show the capabilities of the Model Context Protocol (MCP) and LLM-based debugging. I do not condone the use of these tools for malicious hacking, cheating in multiplayer games, or violating Terms of Service. This is a demonstration of software engineering automation.
